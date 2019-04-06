@@ -2,45 +2,65 @@ package com.example.mvrx
 
 
 import android.os.Bundle
+import android.util.Log
+import android.util.Log.println
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import com.airbnb.mvrx.BaseMvRxFragment
-import com.airbnb.mvrx.MvRxState
-import com.airbnb.mvrx.fragmentViewModel
-import com.airbnb.mvrx.withState
+import android.widget.Toast
+import com.airbnb.mvrx.*
+import io.reactivex.Observable
 
 import kotlinx.android.synthetic.main.fragment_main.*
+import java.util.concurrent.TimeUnit
 
 
 data class HelloWorldState(
     val title: String = "Hello World!",
-    val count: Int = 0
-) : MvRxState {
-    val titleWithCount = "$title - $count"
-}
+    val temperature: Async<Int> = Uninitialized
+) : MvRxState
 
 class HelloWorldViewModel(initialState: HelloWorldState) : MvRxViewModel<HelloWorldState>(initialState) {
-    fun incrementCount() = setState { copy(count = count + 1) }
 
+    init {
+
+        asyncSubscribe(HelloWorldState::temperature, onSuccess = {
+            println(Log.DEBUG, "temprature Async", "temprature :$it")
+        },
+            onFail = {
+                println(Log.DEBUG, "temprature failed", it.localizedMessage)
+            }
+        )
+    }
+
+    fun fetchTemprature() {
+        Observable.just(72)
+            .delay(3, TimeUnit.SECONDS)
+            .execute { copy(temperature = it) }
+    }
 }
 
 class MainFragment : BaseMvRxFragment() {
 
-
     private val viewModel: HelloWorldViewModel by fragmentViewModel()
+
+    override fun invalidate() = withState(viewModel) {
+        titleTxt.text = when (it.temperature) {
+            is Uninitialized -> "Click to load Weather"
+            is Loading -> "Loading"
+            is Success -> "Weather: ${it.temperature()} degrees"
+            else -> "Sorry, its else"
+        }
+    }
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         return inflater.inflate(R.layout.fragment_main, container, false)
     }
 
-    override fun invalidate() = withState(viewModel) { state ->
-        titleTxt.text = state.titleWithCount
-    }
-
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) = withState(viewModel) { state ->
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         titleTxt.setOnClickListener {
-            viewModel.incrementCount()
+            viewModel.fetchTemprature()
         }
     }
 }
