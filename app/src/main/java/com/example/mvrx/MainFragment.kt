@@ -18,12 +18,14 @@ import java.util.concurrent.TimeUnit
 
 data class HelloWorldState(
     val title: String = "Hello World!",
-    val temperature: Async<Int> = Uninitialized
-) : MvRxState
+    val count: Int = 0
+) : MvRxState {
+    val titleCount: String = "$title $count"
+}
 
 class HelloWorldViewModel(initialState: HelloWorldState) : MvRxViewModel<HelloWorldState>(initialState) {
 
-    init {
+    /*init {
 
         asyncSubscribe(HelloWorldState::temperature, onSuccess = {
             println(Log.DEBUG, "temprature Async", "temprature :$it")
@@ -32,13 +34,15 @@ class HelloWorldViewModel(initialState: HelloWorldState) : MvRxViewModel<HelloWo
                 println(Log.DEBUG, "temprature failed", it.localizedMessage)
             }
         )
-    }
+    }*/
 
-    fun fetchTemprature() {
-        Observable.just(72)
+    fun fetchCount() = setState { copy(count = count + 1) }
+        /*Observable.just(72)
             .delay(3, TimeUnit.SECONDS)
-            .execute { copy(temperature = it) }
-    }
+            .execute { copy(temperature = it) }*/
+
+
+
 }
 
 class MainFragment : BaseMvRxFragment() {
@@ -46,12 +50,17 @@ class MainFragment : BaseMvRxFragment() {
     private val viewModel: HelloWorldViewModel by fragmentViewModel()
 
     override fun invalidate() = withState(viewModel) {
-        titleTxt.text = when (it.temperature) {
+        titleTxt.text = it.count.toString()
+        /*when (it.count) {
             is Uninitialized -> "Click to load Weather"
             is Loading -> "Loading"
-            is Success -> "Weather: ${it.temperature()} degrees"
+            is Success -> "Weather: ${it.titleCount} degrees"
             else -> "Sorry, its else"
-        }
+        }*/
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
@@ -60,7 +69,7 @@ class MainFragment : BaseMvRxFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         titleTxt.setOnClickListener {
-            viewModel.fetchTemprature()
+            viewModel.fetchCount()
         }
     }
 }
